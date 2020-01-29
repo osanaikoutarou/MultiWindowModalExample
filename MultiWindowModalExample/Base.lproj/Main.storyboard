@@ -60,7 +60,31 @@
                     <view key="view" contentMode="scaleToFill" id="9QR-Mb-dpB">
                         <rect key="frame" x="0.0" y="0.0" width="414" height="896"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Zqq-O2-G66">
+                                <rect key="frame" x="364" y="54" width="30" height="48"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="30"/>
+                                <state key="normal" title="✗">
+                                    <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                </state>
+                                <connections>
+                                    <action selector="closeButonTapped:" destination="l5a-9S-VcQ" eventType="touchUpInside" id="seV-ia-E1q"/>
+                                </connections>
+                            </button>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="タイトル" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="JZG-z7-XWO">
+                                <rect key="frame" x="172.5" y="67.5" width="69.5" height="21"/>
+                                <fontDescription key="fontDescription" type="boldSystem" pointSize="17"/>
+                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <nil key="highlightedColor"/>
+                            </label>
+                        </subviews>
                         <color key="backgroundColor" systemColor="systemPurpleColor" red="0.68627450980000004" green="0.32156862749999998" blue="0.87058823529999996" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <constraints>
+                            <constraint firstItem="Zqq-O2-G66" firstAttribute="top" secondItem="Zvw-y6-I0i" secondAttribute="top" constant="10" id="4f6-tD-Frn"/>
+                            <constraint firstItem="Zqq-O2-G66" firstAttribute="centerY" secondItem="JZG-z7-XWO" secondAttribute="centerY" id="8wH-6u-2u3"/>
+                            <constraint firstItem="JZG-z7-XWO" firstAttribute="centerX" secondItem="9QR-Mb-dpB" secondAttribute="centerX" id="kgo-wI-S8m"/>
+                            <constraint firstItem="Zvw-y6-I0i" firstAttribute="trailing" secondItem="Zqq-O2-G66" secondAttribute="trailing" constant="20" id="q8w-oL-iu3"/>
+                        </constraints>
                         <viewLayoutGuide key="safeArea" id="Zvw-y6-I0i"/>
                     </view>
                 </viewController>

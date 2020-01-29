@@ -8,7 +8,8 @@
 
 import UIKit
 
-class WindowModalController {
+/// UIWindowを生成しModalのように表示するための管理Class
+final class WindowModalController {
     var window: UIWindow = UIWindow()
     var navigationController: WindowModalNavigationController? {
         get {
@@ -34,13 +35,18 @@ class WindowModalController {
         }
     }
     
+    /// Modalの大きさ・状態
     var currentType: WindowSizeType = .none
     
     init() {
         window.layer.cornerRadius = 10
         window.clipsToBounds = true
     }
+}
+
+extension WindowModalController {
     
+    /// present 内部の画面とサイズタイプ
     func present(viewController: UIViewController, windowSizeType: WindowSizeType) {
         self.currentType = windowSizeType
         
@@ -48,6 +54,7 @@ class WindowModalController {
         })
     }
         
+    /// present 内部の画面とサイズ（基本呼ばない）
     func present(viewController: UIViewController,
                  viewSize: CGSize,
                  showHeight: CGFloat,
@@ -74,40 +81,74 @@ class WindowModalController {
         }
     }
     
+    /// Windowを削除
     func deallocWindow() {
         window.isHidden = true
     }
 }
-extension WindowModalController {
-    enum WindowSizeType {
-        case none
-        case max
-        case semi
 
-        var size: CGSize {
-            switch self {
-            case .max:
-                return UIScreen.main.bounds.size
-            case .semi:
-                return CGSize(width: UIScreen.main.bounds.size.width, height: UIScreen.main.bounds.size.height * 0.5)
-            case .none:
-                return CGSize(width: UIScreen.main.bounds.size.width, height: 0)
-            }
-        }
-        
-        var frame: CGRect {
-            switch self {
-            case .max:
-                return CGRect(x: 0, y: 50, width: size.width, height: size.height)
-            case .semi:
-                return CGRect(x: 0, y: UIScreen.main.bounds.size.height - size.height, width: size.width, height: WindowSizeType.max.size.height)
-            case .none:
-                return CGRect(x: 0, y: UIScreen.main.bounds.size.height, width: size.width, height: WindowSizeType.max.size.height)
-            }
+// MARK: -
+
+class WindowSizeType {
+    enum Type {
+        case none
+        case small
+        case midium
+        case large
+        case full
+    }
+
+    var noneHeight: CGFloat = 0
+    var smallHeight: CGFloat = 120
+    var midiumHeight: CGFloat = UIScreen.main.bounds.height * 0.5
+    var largeHeight: CGFloat = UIScreen.main.bounds.height - 50
+    var fullHeight: CGFloat = UIScreen.main.bounds.height
+    
+    func height(_ type: Type) -> CGFloat {
+        switch type {
+        case .none:
+            return noneHeight
+        case .small:
+            return smallHeight
+        case .midium:
+            return midiumHeight
+        case .large:
+            return largeHeight
+        case .full:
+            return fullHeight
         }
     }
     
+    var screenHeightType: Type = .large
+    var screenHeight: CGFloat {
+        return height(screenHeightType)
+    }
+    
+    var noneWidth: CGFloat = UIScreen.main.bounds.width
+    var smallWidth: CGFloat = UIScreen.main.bounds.width
+    var midiumWidth: CGFloat = UIScreen.main.bounds.width
+    var largeWidth: CGFloat = UIScreen.main.bounds.width
+    var fullWidth: CGFloat = UIScreen.main.bounds.width
+        
+    func frame(_ type: Type) -> CGRect {
+        switch type {
+        case .none:
+            return CGRect(x: (UIScreen.main.bounds.width - noneWidth)/2.0, y: UIScreen.main.bounds.size.height, width: noneWidth, height: screenHeight)
+        case .small:
+            return CGRect(x: (UIScreen.main.bounds.width - smallWidth)/2.0, y: UIScreen.main.bounds.size.height - smallHeight, width: smallWidth, height: screenHeight)
+        case .midium:
+            return CGRect(x: (UIScreen.main.bounds.width - midiumWidth)/2.0, y: UIScreen.main.bounds.size.height - midiumHeight, width: midiumWidth, height: screenHeight)
+        case .large:
+            return CGRect(x: (UIScreen.main.bounds.width - largeWidth)/2.0, y: UIScreen.main.bounds.size.height - largeHeight, width: largeWidth, height: screenHeight)
+        case .full:
+            return CGRect(x: (UIScreen.main.bounds.width - fullWidth)/2.0, y: UIScreen.main.bounds.size.height - fullHeight, width: fullWidth, height: screenHeight)
+        }
+    }
+
 }
+
+// ここから
+
 extension WindowModalController {
     func changeFrame(frame: CGRect) {
         UIView.perform(UIView.SystemAnimation.delete, on: [], options: UIView.AnimationOptions(rawValue: 0),animations: {
@@ -118,16 +159,30 @@ extension WindowModalController {
     }
     
     func changeFrame(windowSizeType: WindowSizeType) {
-        UIView.perform(UIView.SystemAnimation.delete, on: [], options: UIView.AnimationOptions(rawValue: 0),animations: {
+        self.currentType = windowSizeType
+        UIView.perform(UIView.SystemAnimation.delete, on: [], options: [.allowUserInteraction], animations: {
             self.frame = windowSizeType.frame
 //            self.navigationController?.isNavigationBarHidden = false
         }) { (finished) in
-            self.currentType = windowSizeType
+            if windowSizeType == .none {
+                self.deallocWindow()
+            }
         }
     }
     
     func changeFrameBounce(windowSizeType: WindowSizeType) {
         //TODO:UIActivityViewControllerみたいに動かしたい
+    }
+}
+
+protocol WindowModalViewController: UIViewController {
+    func dismissWindow()
+}
+extension WindowModalViewController {
+    func dismissWindow() {
+        if let nav = self.navigationController as? WindowModalNavigationController {
+            nav.windowModalController?.changeFrame(windowSizeType: .none)
+        }
     }
 }
 
@@ -147,8 +202,10 @@ class WindowModalNavigationController: UINavigationController {
     }
     
     @objc func didPan(sender: UIPanGestureRecognizer) {
+        print(sender.state)
         switch sender.state {
         case .began:
+            self.view.layer.removeAllAnimations()
             windowFrame = self.view.window?.frame
         case .changed:
             self.view.window?.changeFrame(baseFrame: windowFrame, y: sender.translation(in: self.view).y)
@@ -156,9 +213,8 @@ class WindowModalNavigationController: UINavigationController {
             let move = sender.translation(in: view).y     // 上方向がマイナス
             print(move)
             
-            if move < -50 {
+            if move < -50 { // 上に動かした
                 if let windowModalController = windowModalController {
-                    print("a")
                     switch windowModalController.currentType {
                     case .none:
                         break
@@ -169,20 +225,18 @@ class WindowModalNavigationController: UINavigationController {
                     }
                 }
             }
-            else if move < 50 {
+            else if move < 50 { // 動かす量が少ない
                 if let windowModalController = windowModalController {
-                    print("b")
                     windowModalController.changeFrame(windowSizeType: windowModalController.currentType)
                 }
             }
-            else {
+            else {  // 下に動かした
                 if let windowModalController = windowModalController {
-                    print("c")
                     switch windowModalController.currentType {
                     case .none:
                         break
                     case .max:
-                        windowModalController.changeFrame(windowSizeType: .none)
+                        windowModalController.changeFrame(windowSizeType: .semi)
                     case .semi:
                         windowModalController.changeFrame(windowSizeType: .none)
                     }
@@ -203,6 +257,7 @@ extension UIView {
         
         f.origin.x += x
         f.origin.y += y
+        f.origin.y = max(WindowSizeType.max.frame.origin.y, f.origin.y)
         f.size.width += width
         f.size.height += height
         self.frame = f

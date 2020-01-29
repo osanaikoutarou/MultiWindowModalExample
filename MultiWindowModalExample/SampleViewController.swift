@@ -8,7 +8,7 @@
 
 import UIKit
 
-class SampleViewController: UIViewController {
+class SampleViewController: UIViewController, WindowModalViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -16,7 +16,11 @@ class SampleViewController: UIViewController {
         // Do any additional setup after loading the view.
     }
     
-
+    @IBAction func closeButonTapped(_ sender: Any) {
+//        dismiss(animated: true, completion: nil)
+        dismissWindow()
+    }
+    
     /*
     // MARK: - Navigation
 
