@@ -35,8 +35,9 @@ final class WindowModalController {
         }
     }
     
+    var windowSizeType = WindowSizeType()
     /// Modalの大きさ・状態
-    var currentType: WindowSizeType = .none
+    var currentType: WindowSizeType.SizeType = .none
     
     init() {
         window.layer.cornerRadius = 10
@@ -47,10 +48,14 @@ final class WindowModalController {
 extension WindowModalController {
     
     /// present 内部の画面とサイズタイプ
-    func present(viewController: UIViewController, windowSizeType: WindowSizeType) {
-        self.currentType = windowSizeType
+    func present(viewController: UIViewController, sizeType: WindowSizeType.SizeType) {
+        self.currentType = sizeType
         
-        present(viewController: viewController, viewSize: windowSizeType.frame.size, showHeight: windowSizeType.size.height, animated: true, completion: {
+        present(viewController: viewController,
+                viewSize: windowSizeType.frame(sizeType).size,
+                showHeight: windowSizeType.frame(sizeType).height,
+                animated: true,
+                completion: {
         })
     }
         
@@ -90,21 +95,44 @@ extension WindowModalController {
 // MARK: -
 
 class WindowSizeType {
-    enum Type {
+    enum SizeType {
         case none
         case small
         case midium
         case large
         case full
     }
-
+    
     var noneHeight: CGFloat = 0
     var smallHeight: CGFloat = 120
     var midiumHeight: CGFloat = UIScreen.main.bounds.height * 0.5
     var largeHeight: CGFloat = UIScreen.main.bounds.height - 50
     var fullHeight: CGFloat = UIScreen.main.bounds.height
     
-    func height(_ type: Type) -> CGFloat {
+    var noneWidth: CGFloat = UIScreen.main.bounds.width
+    var smallWidth: CGFloat = UIScreen.main.bounds.width
+    var midiumWidth: CGFloat = UIScreen.main.bounds.width
+    var largeWidth: CGFloat = UIScreen.main.bounds.width
+    var fullWidth: CGFloat = UIScreen.main.bounds.width
+    
+    /// スワイプ時の挙動定義
+    var actionUp: [(from: SizeType, to: SizeType)] = [(.none, .none),
+                                                      (.small, .large),
+                                                      (.midium, .large),
+                                                      (.large, .large)]
+    var actionDown: [(from: SizeType, to: SizeType)] = [(.none, .none),
+                                                        (.small, .none),
+                                                        (.midium, .none),
+                                                        (.large, .small)]
+    
+    func getActionUp(from: SizeType) -> SizeType? {
+        return actionUp.first(where: { $0.from == from })?.to
+    }
+    func getActionDown(from: SizeType) -> SizeType? {
+        return actionDown.first(where: { $0.from == from })?.to
+    }
+
+    func height(_ type: SizeType) -> CGFloat {
         switch type {
         case .none:
             return noneHeight
@@ -119,18 +147,12 @@ class WindowSizeType {
         }
     }
     
-    var screenHeightType: Type = .large
+    var screenHeightType: SizeType = .large
     var screenHeight: CGFloat {
         return height(screenHeightType)
     }
-    
-    var noneWidth: CGFloat = UIScreen.main.bounds.width
-    var smallWidth: CGFloat = UIScreen.main.bounds.width
-    var midiumWidth: CGFloat = UIScreen.main.bounds.width
-    var largeWidth: CGFloat = UIScreen.main.bounds.width
-    var fullWidth: CGFloat = UIScreen.main.bounds.width
-        
-    func frame(_ type: Type) -> CGRect {
+            
+    func frame(_ type: SizeType) -> CGRect {
         switch type {
         case .none:
             return CGRect(x: (UIScreen.main.bounds.width - noneWidth)/2.0, y: UIScreen.main.bounds.size.height, width: noneWidth, height: screenHeight)
@@ -158,13 +180,12 @@ extension WindowModalController {
         }
     }
     
-    func changeFrame(windowSizeType: WindowSizeType) {
-        self.currentType = windowSizeType
+    func changeFrame(sizeType: WindowSizeType.SizeType) {
+        self.currentType = sizeType
         UIView.perform(UIView.SystemAnimation.delete, on: [], options: [.allowUserInteraction], animations: {
-            self.frame = windowSizeType.frame
-//            self.navigationController?.isNavigationBarHidden = false
+            self.frame = self.windowSizeType.frame(sizeType)
         }) { (finished) in
-            if windowSizeType == .none {
+            if sizeType == .none {
                 self.deallocWindow()
             }
         }
@@ -181,7 +202,7 @@ protocol WindowModalViewController: UIViewController {
 extension WindowModalViewController {
     func dismissWindow() {
         if let nav = self.navigationController as? WindowModalNavigationController {
-            nav.windowModalController?.changeFrame(windowSizeType: .none)
+            nav.windowModalController?.changeFrame(sizeType: .none)
         }
     }
 }
@@ -213,32 +234,19 @@ class WindowModalNavigationController: UINavigationController {
             let move = sender.translation(in: view).y     // 上方向がマイナス
             print(move)
             
-            if move < -50 { // 上に動かした
-                if let windowModalController = windowModalController {
-                    switch windowModalController.currentType {
-                    case .none:
-                        break
-                    case .max:
-                        break
-                    case .semi:
-                        windowModalController.changeFrame(windowSizeType: .max)
+            if let windowModalController = windowModalController {
+                let currentType = windowModalController.currentType
+                if move < -50 { // 上に動かした
+                    if let nextSizeType = windowModalController.windowSizeType.getActionUp(from: currentType) {
+                        windowModalController.changeFrame(sizeType: nextSizeType)
                     }
                 }
-            }
-            else if move < 50 { // 動かす量が少ない
-                if let windowModalController = windowModalController {
-                    windowModalController.changeFrame(windowSizeType: windowModalController.currentType)
+                else if move < 50 { // 動かす量が少ない
+                    windowModalController.changeFrame(sizeType: currentType)
                 }
-            }
-            else {  // 下に動かした
-                if let windowModalController = windowModalController {
-                    switch windowModalController.currentType {
-                    case .none:
-                        break
-                    case .max:
-                        windowModalController.changeFrame(windowSizeType: .semi)
-                    case .semi:
-                        windowModalController.changeFrame(windowSizeType: .none)
+                else {  // 下に動かした
+                    if let nextSizeType = windowModalController.windowSizeType.getActionDown(from: currentType) {
+                        windowModalController.changeFrame(sizeType: nextSizeType)
                     }
                 }
             }
