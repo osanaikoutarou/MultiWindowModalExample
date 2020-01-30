@@ -20,19 +20,13 @@ class ViewController: UIViewController {
 
     @IBAction func tapped(_ sender: Any) {
         let vc = storyboard?.instantiateViewController(withIdentifier: "SampleViewController") as! SampleViewController
-//        wc.present(viewController: vc,
-//                   viewSize: CGSize(width: view.bounds.width,
-//                                    height: WindowModalController.WindowSizeType.max.size.height),
-//                   showHeight: 400.0,
-//                   animated: true,
-//                   completion: nil)
-        wc.present(viewController: vc, windowSizeType: .semi)
+        wc.present(viewController: vc, sizeType: .small)
     }
     
     
     @IBAction func tappppped(_ sender: Any) {
 //        wc.changeFrame(frame: CGRect(x: 0, y: 0, width: view.bounds.width, height: WindowModalController.WindowSize.max.size.height))
-        wc.changeFrame(windowSizeType: .max)
+        wc.changeFrame(sizeType: .large)
     }
     
     

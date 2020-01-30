@@ -14,6 +14,10 @@ class SampleViewController: UIViewController, WindowModalViewController {
         super.viewDidLoad()
 
         // Do any additional setup after loading the view.
+        
+        view.clipsToBounds = true
+        view.layer.cornerRadius = 20
+
     }
     
     @IBAction func closeButonTapped(_ sender: Any) {

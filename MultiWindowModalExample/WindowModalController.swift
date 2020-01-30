@@ -40,8 +40,9 @@ final class WindowModalController {
     var currentType: WindowSizeType.SizeType = .none
     
     init() {
-        window.layer.cornerRadius = 10
-        window.clipsToBounds = true
+//        window.layer.cornerRadius = 10
+//        window.clipsToBounds = true
+        window.backgroundColor = .clear
     }
 }
 
@@ -52,8 +53,7 @@ extension WindowModalController {
         self.currentType = sizeType
         
         present(viewController: viewController,
-                viewSize: windowSizeType.frame(sizeType).size,
-                showHeight: windowSizeType.frame(sizeType).height,
+                showFrame: windowSizeType.frame(sizeType),
                 animated: true,
                 completion: {
         })
@@ -61,23 +61,29 @@ extension WindowModalController {
         
     /// present 内部の画面とサイズ（基本呼ばない）
     func present(viewController: UIViewController,
-                 viewSize: CGSize,
-                 showHeight: CGFloat,
+                 showFrame: CGRect,
                  animated: Bool,
                  completion: (() -> Void)?) {
-        self.frame = CGRect(x: 0,
-                            y: UIScreen.main.bounds.height,
-                            width: viewSize.width,
-                            height: viewSize.height)
-        let lastFrame = CGRect(x: 0,
-                               y: UIScreen.main.bounds.height - showHeight,
-                               width: viewSize.width,
-                               height: viewSize.height)
+        self.frame = windowSizeType.frame(WindowSizeType.SizeType.none)
+        let lastFrame = showFrame
         navigationController = WindowModalNavigationController(rootViewController: viewController)
         navigationController?.windowModalController = self
         
         window.makeKeyAndVisible()
         window.makeKey()
+        
+        
+        let shadowView = UIView(frame: CGRect(origin: .zero, size: self.frame.size))
+        shadowView.backgroundColor = .white
+        shadowView.clipsToBounds = false
+        shadowView.layer.cornerRadius = 20
+        shadowView.layer.shadowColor = UIColor.black.cgColor
+        shadowView.layer.shadowOffset = .zero//CGSize(width: 1, height: 1)
+        shadowView.layer.shadowOpacity = 0.4
+        shadowView.layer.shadowRadius = 3
+//        window.addSubview(shadowView)
+        window.insertSubview(shadowView, at: 0)
+
         
         UIView.perform(UIView.SystemAnimation.delete, on: [], options: UIView.AnimationOptions(rawValue: 0), animations: {
             self.frame = lastFrame
@@ -94,6 +100,7 @@ extension WindowModalController {
 
 // MARK: -
 
+/// 画面のサイズタイプ
 class WindowSizeType {
     enum SizeType {
         case none
@@ -103,6 +110,7 @@ class WindowSizeType {
         case full
     }
     
+    // 変更可能
     var noneHeight: CGFloat = 0
     var smallHeight: CGFloat = 120
     var midiumHeight: CGFloat = UIScreen.main.bounds.height * 0.5
@@ -114,8 +122,14 @@ class WindowSizeType {
     var midiumWidth: CGFloat = UIScreen.main.bounds.width
     var largeWidth: CGFloat = UIScreen.main.bounds.width
     var fullWidth: CGFloat = UIScreen.main.bounds.width
+   
+    var maxType: SizeType = .large
+    var screenHeightType: SizeType = .large
+    var screenHeight: CGFloat {
+        return height(screenHeightType)
+    }
     
-    /// スワイプ時の挙動定義
+    /// スワイプ時の挙動定義（変更可能）
     var actionUp: [(from: SizeType, to: SizeType)] = [(.none, .none),
                                                       (.small, .large),
                                                       (.midium, .large),
@@ -146,11 +160,6 @@ class WindowSizeType {
             return fullHeight
         }
     }
-    
-    var screenHeightType: SizeType = .large
-    var screenHeight: CGFloat {
-        return height(screenHeightType)
-    }
             
     func frame(_ type: SizeType) -> CGRect {
         switch type {
@@ -169,8 +178,6 @@ class WindowSizeType {
 
 }
 
-// ここから
-
 extension WindowModalController {
     func changeFrame(frame: CGRect) {
         UIView.perform(UIView.SystemAnimation.delete, on: [], options: UIView.AnimationOptions(rawValue: 0),animations: {
@@ -180,6 +187,7 @@ extension WindowModalController {
         }
     }
     
+    /// 画面サイズを変更する
     func changeFrame(sizeType: WindowSizeType.SizeType) {
         self.currentType = sizeType
         UIView.perform(UIView.SystemAnimation.delete, on: [], options: [.allowUserInteraction], animations: {
@@ -190,12 +198,12 @@ extension WindowModalController {
             }
         }
     }
-    
-    func changeFrameBounce(windowSizeType: WindowSizeType) {
-        //TODO:UIActivityViewControllerみたいに動かしたい
-    }
 }
 
+// MARK: -
+
+/// UIWindow -> WindowModalNavigationController -> UIViewController となっている場合に
+/// UIViewControllerに適用するprotocol
 protocol WindowModalViewController: UIViewController {
     func dismissWindow()
 }
@@ -207,16 +215,22 @@ extension WindowModalViewController {
     }
 }
 
+/// UIWindow -> WindowModalNavigationController
 class WindowModalNavigationController: UINavigationController {
     
     var windowFrame: CGRect?
     weak var windowModalController: WindowModalController?
     
+    var isDefaultNavigationBarHidden: Bool = true
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        isNavigationBarHidden = true
-        view.layer.cornerRadius = 10
-        view.clipsToBounds = true
+        
+        // デフォルトで
+        isNavigationBarHidden = isDefaultNavigationBarHidden
+
+//        view.layer.cornerRadius = 10
+//        view.clipsToBounds = true
         
         let panGestureRecognizer = UIPanGestureRecognizer(target: self, action: #selector(didPan))
         self.view.addGestureRecognizer(panGestureRecognizer)
@@ -229,25 +243,28 @@ class WindowModalNavigationController: UINavigationController {
             self.view.layer.removeAllAnimations()
             windowFrame = self.view.window?.frame
         case .changed:
-            self.view.window?.changeFrame(baseFrame: windowFrame, y: sender.translation(in: self.view).y)
+            guard let windowModalController = windowModalController else {
+                return
+            }
+            self.view.window?.changeFrame(baseFrame: windowFrame, fullFrameHeight: WindowSizeType().height(windowModalController.windowSizeType.maxType), y: sender.translation(in: self.view).y)
         case .cancelled, .ended:
             let move = sender.translation(in: view).y     // 上方向がマイナス
-            print(move)
+            let vector = sender.velocity(in: view).y      // 上方向がマイナス
             
             if let windowModalController = windowModalController {
                 let currentType = windowModalController.currentType
-                if move < -50 { // 上に動かした
+                if move < -40 && vector < -40 { // 上に動かした
                     if let nextSizeType = windowModalController.windowSizeType.getActionUp(from: currentType) {
                         windowModalController.changeFrame(sizeType: nextSizeType)
                     }
                 }
-                else if move < 50 { // 動かす量が少ない
-                    windowModalController.changeFrame(sizeType: currentType)
-                }
-                else {  // 下に動かした
+                else if move > 40 && vector > 40 { // 下に動かした
                     if let nextSizeType = windowModalController.windowSizeType.getActionDown(from: currentType) {
                         windowModalController.changeFrame(sizeType: nextSizeType)
                     }
+                }
+                else {
+                    windowModalController.changeFrame(sizeType: currentType)
                 }
             }
         default:
@@ -257,7 +274,7 @@ class WindowModalNavigationController: UINavigationController {
 }
 
 extension UIView {
-    func changeFrame(baseFrame: CGRect? = nil, x: CGFloat = 0, y: CGFloat = 0, width: CGFloat = 0, height: CGFloat = 0) {
+    func changeFrame(baseFrame: CGRect? = nil, fullFrameHeight: CGFloat, x: CGFloat = 0, y: CGFloat = 0, width: CGFloat = 0, height: CGFloat = 0) {
         var f = self.frame
         if let baseFrame = baseFrame {
             f = baseFrame
@@ -265,7 +282,7 @@ extension UIView {
         
         f.origin.x += x
         f.origin.y += y
-        f.origin.y = max(WindowSizeType.max.frame.origin.y, f.origin.y)
+        f.origin.y = max(UIScreen.main.bounds.height - fullFrameHeight, f.origin.y)
         f.size.width += width
         f.size.height += height
         self.frame = f
