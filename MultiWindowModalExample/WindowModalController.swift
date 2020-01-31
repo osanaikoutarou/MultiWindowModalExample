@@ -39,9 +39,11 @@ final class WindowModalController {
     /// Modalの大きさ・状態
     var currentType: WindowSizeType.SizeType = .none
     
+    var delegate: WindowModalControllerDelegate?
+    
+    var timer: Timer?
+    
     init() {
-//        window.layer.cornerRadius = 10
-//        window.clipsToBounds = true
         window.backgroundColor = .clear
     }
 }
@@ -52,27 +54,15 @@ extension WindowModalController {
     func present(viewController: UIViewController, sizeType: WindowSizeType.SizeType) {
         self.currentType = sizeType
         
-        present(viewController: viewController,
-                showFrame: windowSizeType.frame(sizeType),
-                animated: true,
-                completion: {
-        })
-    }
-        
-    /// present 内部の画面とサイズ（基本呼ばない）
-    func present(viewController: UIViewController,
-                 showFrame: CGRect,
-                 animated: Bool,
-                 completion: (() -> Void)?) {
         self.frame = windowSizeType.frame(WindowSizeType.SizeType.none)
-        let lastFrame = showFrame
+
         navigationController = WindowModalNavigationController(rootViewController: viewController)
         navigationController?.windowModalController = self
         
         window.makeKeyAndVisible()
         window.makeKey()
         
-        
+        //TODO: 移動
         let shadowView = UIView(frame: CGRect(origin: .zero, size: self.frame.size))
         shadowView.backgroundColor = .white
         shadowView.clipsToBounds = false
@@ -81,15 +71,9 @@ extension WindowModalController {
         shadowView.layer.shadowOffset = .zero//CGSize(width: 1, height: 1)
         shadowView.layer.shadowOpacity = 0.4
         shadowView.layer.shadowRadius = 3
-//        window.addSubview(shadowView)
         window.insertSubview(shadowView, at: 0)
 
-        
-        UIView.perform(UIView.SystemAnimation.delete, on: [], options: UIView.AnimationOptions(rawValue: 0), animations: {
-            self.frame = lastFrame
-        }) { (finished) in
-            
-        }
+        changeFrame(sizeType: sizeType)
     }
     
     /// Windowを削除
@@ -180,15 +164,29 @@ class WindowSizeType {
 
 extension WindowModalController {
     func changeFrame(frame: CGRect) {
+        // 60fpsでframeを送る
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true, block: { (timer) in
+            self.delegate?.windowModalController(windowModalController: self, didMove: self.window.frameInAnimation)
+        })
+        timer?.fire()
+        
         UIView.perform(UIView.SystemAnimation.delete, on: [], options: UIView.AnimationOptions(rawValue: 0),animations: {
             self.frame = frame
             self.navigationController?.isNavigationBarHidden = false
         }) { (finished) in
+            self.timer?.fire()
+            self.timer?.invalidate()
         }
     }
     
     /// 画面サイズを変更する
     func changeFrame(sizeType: WindowSizeType.SizeType) {
+        // 60fpsでframeを送る
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true, block: { (timer) in
+            self.delegate?.windowModalController(windowModalController: self, didMove: self.window.frameInAnimation)
+        })
+        timer?.fire()
+        
         self.currentType = sizeType
         UIView.perform(UIView.SystemAnimation.delete, on: [], options: [.allowUserInteraction], animations: {
             self.frame = self.windowSizeType.frame(sizeType)
@@ -196,6 +194,9 @@ extension WindowModalController {
             if sizeType == .none {
                 self.deallocWindow()
             }
+            
+            self.timer?.fire()
+            self.timer?.invalidate()
         }
     }
 }
@@ -204,14 +205,24 @@ extension WindowModalController {
 
 /// UIWindow -> WindowModalNavigationController -> UIViewController となっている場合に
 /// UIViewControllerに適用するprotocol
-protocol WindowModalViewController: UIViewController {
-    func dismissWindow()
+protocol WindowModalControllerDelegate: UIViewController {
+    /// 閉じる
+    func dismissWindowModal()
+    
+    ///
+    func windowModalController(windowModalController: WindowModalController, didMove windowFrame: CGRect)
 }
-extension WindowModalViewController {
-    func dismissWindow() {
-        if let nav = self.navigationController as? WindowModalNavigationController {
-            nav.windowModalController?.changeFrame(sizeType: .none)
+extension WindowModalControllerDelegate {
+    func dismissWindowModal() {
+        guard let nav = self.navigationController as? WindowModalNavigationController,
+            let controller = nav.windowModalController else {
+                return
         }
+        
+        controller.changeFrame(sizeType: .none)
+    }
+    
+    func windowModalController(windowModalController: WindowModalController, didMove windowFrame: CGRect) {
     }
 }
 
@@ -237,36 +248,41 @@ class WindowModalNavigationController: UINavigationController {
     }
     
     @objc func didPan(sender: UIPanGestureRecognizer) {
-        print(sender.state)
+        guard let windowModalController = windowModalController else {
+            return
+        }
+        
         switch sender.state {
         case .began:
             self.view.layer.removeAllAnimations()
             windowFrame = self.view.window?.frame
+            
+            windowModalController.delegate?.windowModalController(windowModalController: windowModalController, didMove: self.windowModalController?.window.frameInAnimation ?? .zero)
+            
         case .changed:
-            guard let windowModalController = windowModalController else {
-                return
-            }
             self.view.window?.changeFrame(baseFrame: windowFrame, fullFrameHeight: WindowSizeType().height(windowModalController.windowSizeType.maxType), y: sender.translation(in: self.view).y)
+
+            windowModalController.delegate?.windowModalController(windowModalController: windowModalController, didMove: self.windowModalController?.window.frameInAnimation ?? .zero)
+            
         case .cancelled, .ended:
             let move = sender.translation(in: view).y     // 上方向がマイナス
             let vector = sender.velocity(in: view).y      // 上方向がマイナス
             
-            if let windowModalController = windowModalController {
-                let currentType = windowModalController.currentType
-                if move < -40 && vector < -40 { // 上に動かした
-                    if let nextSizeType = windowModalController.windowSizeType.getActionUp(from: currentType) {
-                        windowModalController.changeFrame(sizeType: nextSizeType)
-                    }
-                }
-                else if move > 40 && vector > 40 { // 下に動かした
-                    if let nextSizeType = windowModalController.windowSizeType.getActionDown(from: currentType) {
-                        windowModalController.changeFrame(sizeType: nextSizeType)
-                    }
-                }
-                else {
-                    windowModalController.changeFrame(sizeType: currentType)
+            let currentType = windowModalController.currentType
+            if move < -40 && vector < -40 { // 上に動かした
+                if let nextSizeType = windowModalController.windowSizeType.getActionUp(from: currentType) {
+                    windowModalController.changeFrame(sizeType: nextSizeType)
                 }
             }
+            else if move > 40 && vector > 40 { // 下に動かした
+                if let nextSizeType = windowModalController.windowSizeType.getActionDown(from: currentType) {
+                    windowModalController.changeFrame(sizeType: nextSizeType)
+                }
+            }
+            else {
+                windowModalController.changeFrame(sizeType: currentType)
+            }
+            
         default:
             break
         }
@@ -289,3 +305,16 @@ extension UIView {
     }
     
 }
+
+private extension UIView {
+    /// アニメーション中のframeを取る方法
+    var frameInAnimation: CGRect {
+        return self.layer.presentation()?.frame ?? .zero
+    }
+}
+//private extension UIWindow {
+//    /// アニメーション中のframeを取る方法
+//    var frameInAnimation: CGRect {
+//        return self.layer.presentation()?.frame ?? .zero
+//    }
+//}

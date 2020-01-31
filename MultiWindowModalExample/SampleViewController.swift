@@ -8,7 +8,7 @@
 
 import UIKit
 
-class SampleViewController: UIViewController, WindowModalViewController {
+class SampleViewController: UIViewController, WindowModalControllerDelegate {
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -18,21 +18,16 @@ class SampleViewController: UIViewController, WindowModalViewController {
         view.clipsToBounds = true
         view.layer.cornerRadius = 20
 
+        (self.navigationController as? WindowModalNavigationController)?.windowModalController?.delegate = self
     }
     
     @IBAction func closeButonTapped(_ sender: Any) {
 //        dismiss(animated: true, completion: nil)
-        dismissWindow()
+        dismissWindowModal()
     }
     
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destination.
-        // Pass the selected object to the new view controller.
+    func windowModalController(windowModalController: WindowModalController, didMove windowFrame: CGRect) {
+        print(windowFrame)
     }
-    */
 
 }
