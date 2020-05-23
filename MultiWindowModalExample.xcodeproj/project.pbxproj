@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1E19BD4123DA828A00047048 /* WindowModalController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E19BD4023DA828A00047048 /* WindowModalController.swift */; };
-		1E19BD4323DA834D00047048 /* SampleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E19BD4223DA834D00047048 /* SampleViewController.swift */; };
+		1E19BD4323DA834D00047048 /* SemiModalSampleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E19BD4223DA834D00047048 /* SemiModalSampleViewController.swift */; };
 		1E5B722723DA7F5C0012B86A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5B722623DA7F5C0012B86A /* AppDelegate.swift */; };
 		1E5B722923DA7F5C0012B86A /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E5B722823DA7F5C0012B86A /* ViewController.swift */; };
 		1E5B722C23DA7F5C0012B86A /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1E5B722A23DA7F5C0012B86A /* Main.storyboard */; };
@@ -37,7 +37,7 @@
 
 /* Begin PBXFileReference section */
 		1E19BD4023DA828A00047048 /* WindowModalController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowModalController.swift; sourceTree = "<group>"; };
-		1E19BD4223DA834D00047048 /* SampleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleViewController.swift; sourceTree = "<group>"; };
+		1E19BD4223DA834D00047048 /* SemiModalSampleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemiModalSampleViewController.swift; sourceTree = "<group>"; };
 		1E5B722323DA7F5C0012B86A /* MultiWindowModalExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MultiWindowModalExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1E5B722623DA7F5C0012B86A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		1E5B722823DA7F5C0012B86A /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -108,7 +108,7 @@
 				1E5B722F23DA7F5D0012B86A /* LaunchScreen.storyboard */,
 				1E5B723223DA7F5D0012B86A /* Info.plist */,
 				1E19BD4023DA828A00047048 /* WindowModalController.swift */,
-				1E19BD4223DA834D00047048 /* SampleViewController.swift */,
+				1E19BD4223DA834D00047048 /* SemiModalSampleViewController.swift */,
 			);
 			path = MultiWindowModalExample;
 			sourceTree = "<group>";
@@ -264,7 +264,7 @@
 			files = (
 				1E5B722923DA7F5C0012B86A /* ViewController.swift in Sources */,
 				1E5B722723DA7F5C0012B86A /* AppDelegate.swift in Sources */,
-				1E19BD4323DA834D00047048 /* SampleViewController.swift in Sources */,
+				1E19BD4323DA834D00047048 /* SemiModalSampleViewController.swift in Sources */,
 				1E19BD4123DA828A00047048 /* WindowModalController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

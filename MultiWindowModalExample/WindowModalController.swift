@@ -8,8 +8,64 @@
 
 import UIKit
 
+/// backgroundの色やBlur
+final class BackgroundWindow: UIWindow {
+    var color: UIColor? {
+        set {
+            rootViewController?.view.backgroundColor = newValue
+        }
+        get {
+            return rootViewController?.view.backgroundColor
+        }
+    }
+    var animationDuration: TimeInterval = TimeInterval(0.2)
+    var colorAlpha: CGFloat? {
+        set {
+            rootViewController?.view.alpha = newValue ?? 0
+        }
+        get {
+            return rootViewController?.view.alpha
+        }
+    }
+    //TODO: degreeAlpha: CGFloat?
+    var didTapBackground: ((_ sender: UIGestureRecognizer) -> Void)?
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        rootViewController = UIViewController()
+        self.color = UIColor(red: 0, green: 0, blue: 0, alpha: 0.15)
+        
+        let tap = UITapGestureRecognizer(target: self, action: #selector(self.tap(sender:)))
+        rootViewController?.view.addGestureRecognizer(tap)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc func tap(sender: UIGestureRecognizer) {
+        self.didTapBackground?(sender)
+    }
+    
+    func fadein() {
+        colorAlpha = 0
+        UIView.animate(withDuration: animationDuration) {
+            self.colorAlpha = 1
+        }
+    }
+    
+    func fadeout() {
+        colorAlpha = 1
+        UIView.animate(withDuration: animationDuration) {
+            self.colorAlpha = 0
+        }
+    }
+    
+}
+
 /// UIWindowを生成しModalのように表示するための管理Class
 final class WindowModalController {
+    var backgroundWindow: BackgroundWindow = BackgroundWindow(frame: UIScreen.main.bounds)
     var window: UIWindow = UIWindow()
     var navigationController: WindowModalNavigationController? {
         get {
@@ -51,7 +107,10 @@ final class WindowModalController {
 extension WindowModalController {
     
     /// present 内部の画面とサイズタイプ
-    func present(viewController: UIViewController, sizeType: WindowSizeType.SizeType) {
+    func present(viewController: UIViewController,
+                 
+                 sizeType: WindowSizeType.SizeType,
+                 showShadow: Bool = true) {
         self.currentType = sizeType
         
         self.frame = windowSizeType.frame(WindowSizeType.SizeType.none)
@@ -59,10 +118,22 @@ extension WindowModalController {
         navigationController = WindowModalNavigationController(rootViewController: viewController)
         navigationController?.windowModalController = self
         
+        backgroundWindow.makeKeyAndVisible()
+
         window.makeKeyAndVisible()
-        window.makeKey()
+        backgroundWindow.fadein()
+        backgroundWindow.didTapBackground = { rec in
+            self.delegate?.dismissWindowModal()
+        }
         
-        //TODO: 移動
+        if showShadow {
+            addShadow()
+        }
+
+        changeFrame(sizeType: sizeType)
+    }
+    
+    func addShadow() {
         let shadowView = UIView(frame: CGRect(origin: .zero, size: self.frame.size))
         shadowView.backgroundColor = .white
         shadowView.clipsToBounds = false
@@ -72,13 +143,36 @@ extension WindowModalController {
         shadowView.layer.shadowOpacity = 0.4
         shadowView.layer.shadowRadius = 3
         window.insertSubview(shadowView, at: 0)
-
-        changeFrame(sizeType: sizeType)
+    }
+    
+    func costomize(noneHeight: CGFloat = 0,
+                   smallHeight: CGFloat = 120,
+                   midiumHeight: CGFloat = UIScreen.main.bounds.height * 0.5,
+                   largetHeight: CGFloat = UIScreen.main.bounds.height - 50,
+                   fullHeight: CGFloat = UIScreen.main.bounds.height,
+                   maxType: WindowSizeType.SizeType = .large,
+                   actionUp: [(from: WindowSizeType.SizeType, to: WindowSizeType.SizeType)] = [(.none, .none),
+                                                                                               (.small, .large),
+                                                                                               (.midium, .large),
+                                                                                               (.large, .large)],
+                   actionDown: [(from: WindowSizeType.SizeType, to: WindowSizeType.SizeType)] = [(.none, .none),
+                                                                                                 (.small, .none),
+                                                                                                 (.midium, .none),
+                                                                                                 (.large, .small)]) {
+        windowSizeType.setup(noneHeight: noneHeight,
+                             smallHeight: smallHeight,
+                             midiumHeight: midiumHeight,
+                             largeHeight: largetHeight,
+                             fullHeight: fullHeight,
+                             maxType: maxType,
+                             actionUp: actionUp,
+                             actionDown: actionDown)
     }
     
     /// Windowを削除
     func deallocWindow() {
-        window.isHidden = true
+        backgroundWindow.frame = UIScreen.main.bounds
+        backgroundWindow.isHidden = true
     }
 }
 
@@ -86,6 +180,8 @@ extension WindowModalController {
 
 /// 画面のサイズタイプ
 class WindowSizeType {
+    
+    /// 止める位置の種類
     enum SizeType {
         case none
         case small
@@ -96,9 +192,9 @@ class WindowSizeType {
     
     // 変更可能
     var noneHeight: CGFloat = 0
-    var smallHeight: CGFloat = 120
-    var midiumHeight: CGFloat = UIScreen.main.bounds.height * 0.5
-    var largeHeight: CGFloat = UIScreen.main.bounds.height - 50
+    var smallHeight: CGFloat = 120      // 固定
+    var midiumHeight: CGFloat = UIScreen.main.bounds.height * 0.5   // 割合
+    var largeHeight: CGFloat = UIScreen.main.bounds.height - 50     // 固定
     var fullHeight: CGFloat = UIScreen.main.bounds.height
     
     var noneWidth: CGFloat = UIScreen.main.bounds.width
@@ -113,7 +209,8 @@ class WindowSizeType {
         return height(screenHeightType)
     }
     
-    /// スワイプ時の挙動定義（変更可能）
+    /// スワイプ時の挙動定義
+    /// 例: この位置の時に上方向にスワイプしたら　→　この位置になる
     var actionUp: [(from: SizeType, to: SizeType)] = [(.none, .none),
                                                       (.small, .large),
                                                       (.midium, .large),
@@ -160,25 +257,32 @@ class WindowSizeType {
         }
     }
 
+    func setup(noneHeight: CGFloat = 0,
+               smallHeight: CGFloat = 120,
+               midiumHeight: CGFloat = UIScreen.main.bounds.height * 0.5,
+               largeHeight: CGFloat = UIScreen.main.bounds.height - 50,
+               fullHeight: CGFloat = UIScreen.main.bounds.height,
+               maxType: WindowSizeType.SizeType = .large,
+               actionUp: [(from: WindowSizeType.SizeType, to: WindowSizeType.SizeType)] = [(.none, .none),
+                                                                                           (.small, .large),
+                                                                                           (.midium, .large),
+                                                                                           (.large, .large)],
+               actionDown: [(from: WindowSizeType.SizeType, to: WindowSizeType.SizeType)] = [(.none, .none),
+                                                                                             (.small, .none),
+                                                                                             (.midium, .none),
+                                                                                             (.large, .small)]) {
+        self.noneHeight = noneHeight
+        self.smallHeight = smallHeight
+        self.midiumHeight = midiumHeight
+        self.largeHeight = largeHeight
+        self.fullHeight = fullHeight
+        self.maxType = maxType
+        self.actionUp = actionUp
+        self.actionDown = actionDown
+    }
 }
 
 extension WindowModalController {
-    func changeFrame(frame: CGRect) {
-        // 60fpsでframeを送る
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0/60.0, repeats: true, block: { (timer) in
-            self.delegate?.windowModalController(windowModalController: self, didMove: self.window.frameInAnimation)
-        })
-        timer?.fire()
-        
-        UIView.perform(UIView.SystemAnimation.delete, on: [], options: UIView.AnimationOptions(rawValue: 0),animations: {
-            self.frame = frame
-            self.navigationController?.isNavigationBarHidden = false
-        }) { (finished) in
-            self.timer?.fire()
-            self.timer?.invalidate()
-        }
-    }
-    
     /// 画面サイズを変更する
     func changeFrame(sizeType: WindowSizeType.SizeType) {
         // 60fpsでframeを送る
@@ -209,24 +313,28 @@ protocol WindowModalControllerDelegate: UIViewController {
     /// 閉じる
     func dismissWindowModal()
     
-    ///
+    /// 位置が変更された
     func windowModalController(windowModalController: WindowModalController, didMove windowFrame: CGRect)
 }
+/// Default
 extension WindowModalControllerDelegate {
     func dismissWindowModal() {
         guard let nav = self.navigationController as? WindowModalNavigationController,
-            let controller = nav.windowModalController else {
-                return
+              let controller = nav.windowModalController else {
+            return
         }
         
         controller.changeFrame(sizeType: .none)
+        
+        nav.windowModalController?.backgroundWindow.fadeout()
     }
     
     func windowModalController(windowModalController: WindowModalController, didMove windowFrame: CGRect) {
     }
 }
 
-/// UIWindow -> WindowModalNavigationController
+/// セミモーダルのwindowに乗ってるUINavigationController
+/// これに画面を乗せます（このまま遷移もできます）
 class WindowModalNavigationController: UINavigationController {
     
     var windowFrame: CGRect?

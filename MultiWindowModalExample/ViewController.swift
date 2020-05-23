@@ -10,17 +10,21 @@ import UIKit
 
 class ViewController: UIViewController {
 
+    // Modalのためのパーツ
     let wc = WindowModalController()
     
     @IBOutlet weak var slider: UISlider!
     
-    override func viewDidLoad() {
-        super.viewDidLoad()
-    }
-
-    @IBAction func tapped(_ sender: Any) {
-        let vc = storyboard?.instantiateViewController(withIdentifier: "SampleViewController") as! SampleViewController
-        wc.present(viewController: vc, sizeType: .small)
+    
+    @IBAction func showSemiModal(_ sender: Any) {
+        let vc = storyboard?.instantiateViewController(withIdentifier: "SemiModalSampleViewController") as! SemiModalSampleViewController        
+        wc.costomize(maxType: .midium,
+                     actionUp: [],
+                     actionDown: [(WindowSizeType.SizeType.midium, to: WindowSizeType.SizeType.none)])
+        
+        
+        wc.present(viewController: vc, sizeType: .midium)
+        vc.view.backgroundColor = .red
     }
     
     

@@ -8,13 +8,12 @@
 
 import UIKit
 
-class SampleViewController: UIViewController, WindowModalControllerDelegate {
+class SemiModalSampleViewController: UIViewController, WindowModalControllerDelegate {
 
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Do any additional setup after loading the view.
-        
+        // 角丸はここで行う
         view.clipsToBounds = true
         view.layer.cornerRadius = 20
 
